@@ -51,9 +51,7 @@ function findCandidateUrls(html: string, baseUrl: string): string[] {
       const urlDomain = new URL(url).hostname.replace(/^www\./, "");
       if (urlDomain !== baseDomain) return;
       found.push(url);
-    } catch {
-      // ugyldig URL
-    }
+    } catch {}
   });
 
   return [...new Set(found)].slice(0, 5);
@@ -85,38 +83,75 @@ async function doCrawl(domain: string): Promise<CrawlResult> {
   const homepageHtml = await fetchPage(baseUrl);
   if (!homepageHtml) throw new Error("Homepage unreachable");
 
+  // Trin 1: find første 200-OK kandidat (linket fra forside + probe-paths)
   const linkedUrls = findCandidateUrls(homepageHtml, baseUrl);
   const probeUrls = PROBE_PATHS.map((p) => `${baseUrl}/${p}/`);
   const candidateUrls = [...new Set([...linkedUrls, ...probeUrls])];
-  console.log("CRAWLER: Fetching URLs:", candidateUrls);
 
-  // Hent alle parallelt og log hvilke der svarer
-  const results = await Promise.all(
-    candidateUrls.map(async (url) => {
-      const html = await fetchPage(url);
-      console.log(`CRAWLER: ${url} →`, html ? `200 (${html.length} chars)` : "null/404");
-      return html;
-    })
-  );
-  const validPages = results.filter((p): p is string => p !== null);
+  let overviewUrl: string | null = null;
+  let overviewHtml: string | null = null;
 
-  // Send kun den første succesfulde side — den bedst-matchede har alle afdelinger
-  const htmlToSend = validPages.length > 0 ? validPages[0] : homepageHtml;
-  const trimmed = trimHTML(htmlToSend);
+  for (const url of candidateUrls) {
+    const html = await fetchPage(url);
+    console.log(`CRAWLER: ${url} →`, html ? `200 (${html.length} chars)` : "null/404");
+    if (html) {
+      overviewUrl = url;
+      overviewHtml = html;
+      break;
+    }
+  }
 
-  const $ = cheerio.load(homepageHtml);
+  // Trin 2: parse oversigts-siden for undersider (generisk — matcher hvilken som helst oversigt)
+  let htmlToSend: string;
+
+  if (overviewUrl && overviewHtml) {
+    const $overview = cheerio.load(overviewHtml);
+    const branchUrls: string[] = [];
+
+    $overview("a[href]").each((_, el) => {
+      const href = $overview(el).attr("href") ?? "";
+      try {
+        const abs = new URL(href, overviewUrl!).href;
+        if (abs.startsWith(overviewUrl!) && abs !== overviewUrl) {
+          branchUrls.push(abs);
+        }
+      } catch {}
+    });
+
+    const uniqueBranchUrls = [...new Set(branchUrls)].slice(0, 6);
+    console.log("CRAWLER: Found branch URLs:", uniqueBranchUrls);
+
+    if (uniqueBranchUrls.length > 0) {
+      // Trin 3: fetch branch-sider parallelt
+      const branchPages = await Promise.all(uniqueBranchUrls.map((url) => fetchPage(url)));
+      const validBranchPages = branchPages.filter((p): p is string => p !== null);
+      console.log("CRAWLER: Fetched", validBranchPages.length, "branch pages");
+
+      // Trin 4: strip head/scripts fra hver, kombiner
+      htmlToSend = validBranchPages.map((html) => trimHTML(html)).join("\n---NEXT PAGE---\n");
+    } else {
+      // Ingen undersider — send oversigts-siden direkte
+      console.log("CRAWLER: No branch sub-pages found, using overview page directly");
+      htmlToSend = trimHTML(overviewHtml);
+    }
+  } else {
+    // Ingen kandidat fandt noget — fald tilbage til forsiden
+    console.log("CRAWLER: No candidate pages found, using homepage");
+    htmlToSend = trimHTML(homepageHtml);
+  }
+
+  const $home = cheerio.load(homepageHtml);
   const company =
-    $("meta[property='og:site_name']").attr("content") ||
-    $("title").text().split(/[|\-–]/)[0].trim() ||
+    $home("meta[property='og:site_name']").attr("content") ||
+    $home("title").text().split(/[|\-–]/)[0].trim() ||
     domain;
 
   const country = guessCountry(domain);
-  console.log("CRAWLER: About to call Gemini, HTML length:", trimmed.length);
-  console.log("CRAWLER: HTML preview:", trimmed.substring(0, 500));
-  const partial = await extractBranchesFromHTML(trimmed, company, country, domain);
+  console.log("CRAWLER: About to call Gemini, HTML length:", htmlToSend.length);
+  console.log("CRAWLER: HTML preview:", htmlToSend.substring(0, 500));
+  const partial = await extractBranchesFromHTML(htmlToSend, company, country, domain);
   console.log("CRAWLER: Gemini returned", partial.length, "branches");
 
-  // lat/lng sættes til 0 — geocoding og merge med fallback-koordinater håndteres i Sprint 4
   const branches: Branch[] = partial.map((b) => ({
     ...b,
     lat: 0,
