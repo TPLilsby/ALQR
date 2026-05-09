@@ -5,6 +5,12 @@ import { fallbackBranches } from "@/data/fallback-branches";
 
 const LINK_PATTERN = /(afdeling|location|branch|kontakt|find)/i;
 
+const PROBE_PATHS = [
+  "afdelinger", "gsv-afdelinger", "kontakt", "find-os", "locations",
+  "branches", "filialer", "find-afdeling", "kontakt-os",
+  "agences", "standorte", "sucursales", "sedi",
+];
+
 const TLD_COUNTRY: Record<string, string> = {
   dk: "DK", fr: "FR", de: "DE", es: "ES",
   it: "IT", pl: "PL", uk: "GB", nl: "NL",
@@ -83,12 +89,20 @@ async function doCrawl(domain: string): Promise<CrawlResult> {
   const homepageHtml = await fetchPage(baseUrl);
   if (!homepageHtml) throw new Error("Homepage unreachable");
 
-  const candidateUrls = findCandidateUrls(homepageHtml, baseUrl);
+  const linkedUrls = findCandidateUrls(homepageHtml, baseUrl);
+  const probeUrls = PROBE_PATHS.map((p) => `${baseUrl}/${p}/`);
+  const candidateUrls = [...new Set([...linkedUrls, ...probeUrls])];
   console.log("CRAWLER: Fetching URLs:", candidateUrls);
 
-  // Hent kandidatsider parallelt
-  const pages = await Promise.all(candidateUrls.map((url) => fetchPage(url)));
-  const validPages = pages.filter((p): p is string => p !== null);
+  // Hent alle parallelt og log hvilke der svarer
+  const results = await Promise.all(
+    candidateUrls.map(async (url) => {
+      const html = await fetchPage(url);
+      console.log(`CRAWLER: ${url} →`, html ? `200 (${html.length} chars)` : "null/404");
+      return html;
+    })
+  );
+  const validPages = results.filter((p): p is string => p !== null);
 
   // Send kun kandidatsidernes HTML til Gemini — forsiden har ikke afdelingsdata
   // Fallback til forsiden hvis ingen kandidater blev hentet
