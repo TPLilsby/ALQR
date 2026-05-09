@@ -73,8 +73,10 @@ export async function extractBranchesFromHTML(
   country: string,
   domain: string
 ): Promise<Omit<Branch, "lat" | "lng">[]> {
+  console.log("AI-EXTRACT: Called with HTML length:", html.length);
   const prompt = `${SYSTEM_PROMPT}\n\nFirma: ${company}\nLand: ${country}\nDomæne: ${domain}\n\nHTML:\n${html}`;
   try {
+    console.log("AI-EXTRACT: Calling Gemini API, key exists:", !!process.env.GEMINI_API_KEY);
     const response = await fetch(
       `${GEMINI_URL}?key=${process.env.GEMINI_API_KEY}`,
       {

@@ -120,7 +120,9 @@ async function doCrawl(domain: string): Promise<CrawlResult> {
     domain;
 
   const country = guessCountry(domain);
+  console.log("CRAWLER: About to call Gemini, HTML length:", trimmed.length);
   const partial = await extractBranchesFromHTML(trimmed, company, country, domain);
+  console.log("CRAWLER: Gemini returned", partial.length, "branches");
 
   // lat/lng sættes til 0 — geocoding og merge med fallback-koordinater håndteres i Sprint 4
   const branches: Branch[] = partial.map((b) => ({
@@ -141,7 +143,8 @@ async function doCrawl(domain: string): Promise<CrawlResult> {
 export async function crawlDomain(domain: string): Promise<CrawlResult> {
   try {
     return await withTimeout(doCrawl(domain), 8_000);
-  } catch {
+  } catch (error) {
+    console.log("CRAWLER: Timeout or error:", error);
     return makeFallbackResult(domain);
   }
 }
