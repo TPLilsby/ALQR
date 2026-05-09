@@ -29,7 +29,10 @@
       "Bash(cmd /c \"for /f \\\\\"tokens=5\\\\\" %a in \\('netstat -aon ^| findstr :3002'\\) do taskkill /PID %a /F\")",
       "Bash(cmd *)",
       "Bash(curl *)",
-      "Bash(node -e \"require\\('@eslint/eslintrc'\\)\")"
+      "Bash(node -e \"require\\('@eslint/eslintrc'\\)\")",
+      "Bash(git add *)",
+      "Bash(git commit -m 'fix: update Gemini model to gemini-2.0-flash *)",
+      "Bash(git push *)"
     ]
   }
 }
