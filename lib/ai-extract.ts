@@ -63,7 +63,7 @@ function toSlug(s: string): string {
 export function trimHTML(html: string): string {
   const $ = cheerio.load(html);
   $("head, script, style, svg, noscript").remove();
-  return ($.html("body") ?? $.html()).slice(0, 30_000);
+  return ($.html("body") ?? $.html()).slice(0, 80_000);
 }
 
 export async function extractBranchesFromHTML(
