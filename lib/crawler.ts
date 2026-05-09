@@ -13,10 +13,10 @@ const OVERVIEW_PATTERNS = [
 ];
 
 const BRANCH_PATTERNS = [
-  /\bafdeling\b/i,
+  /afdeling/i,
   /\bkontakt\b/i,
   /find-os/i,
-  /\blokation/i,
+  /lokation/i,
   /\bbranch\b/i,
   /store-locator/i,
 ];
@@ -104,6 +104,7 @@ async function doCrawl(domain: string): Promise<CrawlResult> {
   if (!homepageHtml) throw new Error("Homepage unreachable");
 
   const candidateUrls = findCandidateUrls(homepageHtml, baseUrl);
+  console.log("CRAWLER: Fetching URLs:", candidateUrls);
 
   // Hent alle kandidatsider parallelt — inkl. oversigts-sider som gsv.dk/gsv-afdelinger/
   const pages = await Promise.all(candidateUrls.map((url) => fetchPage(url)));
@@ -121,6 +122,7 @@ async function doCrawl(domain: string): Promise<CrawlResult> {
 
   const country = guessCountry(domain);
   console.log("CRAWLER: About to call Gemini, HTML length:", trimmed.length);
+  console.log("CRAWLER: HTML preview:", trimmed.substring(0, 500));
   const partial = await extractBranchesFromHTML(trimmed, company, country, domain);
   console.log("CRAWLER: Gemini returned", partial.length, "branches");
 
