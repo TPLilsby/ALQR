@@ -2,7 +2,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { Branch, DataSource } from "@/types/branch";
 
 const genai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-const model = genai.getGenerativeModel({ model: "gemini-2.0-flash" });
+const model = genai.getGenerativeModel({ model: "gemini-2.5-flash" });
 
 const SYSTEM_PROMPT = `Du er en præcis data-ekstraktor. Din opgave er at udtrække information om ALLE fysiske afdelinger fra virksomhedens hjemmeside-HTML.
 
