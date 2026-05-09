@@ -1,7 +1,7 @@
 import { Branch, DataSource } from "@/types/branch";
 
 const GEMINI_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent";
 
 const SYSTEM_PROMPT = `Du er en præcis data-ekstraktor. Din opgave er at udtrække information om ALLE fysiske afdelinger fra virksomhedens hjemmeside-HTML.
 
