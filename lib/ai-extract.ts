@@ -87,6 +87,7 @@ export async function extractBranchesFromHTML(
         }),
       }
     );
+    console.log("AI-EXTRACT: Gemini response status:", response.status);
     if (!response.ok) {
       const err = await response.text();
       console.error("Gemini API error:", response.status, err);
@@ -94,6 +95,7 @@ export async function extractBranchesFromHTML(
     }
     const data = await response.json();
     const raw: string = data.candidates[0].content.parts[0].text;
+    console.log("AI-EXTRACT: Gemini raw response (first 500 chars):", raw.substring(0, 500));
     const json = extractJSON(raw);
     const parsed = JSON.parse(json);
     if (!Array.isArray(parsed)) return [];
@@ -108,7 +110,8 @@ export async function extractBranchesFromHTML(
       sourceUrl: b.sourceUrl ?? `https://${domain}`,
       source: "crawled" as DataSource,
     }));
-  } catch {
+  } catch (error) {
+    console.log("AI-EXTRACT: Parse error:", error);
     return [];
   }
 }
