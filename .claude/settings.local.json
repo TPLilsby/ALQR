@@ -33,7 +33,20 @@
       "Bash(git add *)",
       "Bash(git commit -m 'fix: update Gemini model to gemini-2.0-flash *)",
       "Bash(git push *)",
-      "Bash(git commit -m 'fix: build QR URL from window.location.origin instead of hardcoded alqr.dk *)"
+      "Bash(git commit -m 'fix: build QR URL from window.location.origin instead of hardcoded alqr.dk *)",
+      "Bash(git commit -m 'fix: bypass Gemini SDK, use direct REST fetch for gemini-2.5-flash *)",
+      "Bash(git commit -m 'fix: use gemini-flash-latest as model name per Google quickstart *)",
+      "Bash(git commit -m 'debug: add console.log tracing to crawler and ai-extract *)",
+      "Bash(git commit -m 'fix: increase crawl timeout to 25s, reduce HTML cap to 30K chars *)",
+      "Bash(git commit -m 'debug: log Gemini response status, raw text, and parse errors *)",
+      "Bash(git commit -m 'debug: log candidate URLs and HTML preview; broaden afdeling pattern *)",
+      "Bash(git commit -m 'fix: parse homepage links broadly, send only candidate pages to Gemini *)",
+      "Bash(git commit -m 'debug: log all hrefs and pattern matches in findCandidateUrls *)",
+      "Bash(git commit -m 'fix: add probe paths as supplement to link scanning, log each URL status *)",
+      "Bash(git commit -m 'fix: increase trimHTML cap from 30K to 80K chars *)",
+      "Bash(git commit -m 'fix: send only first valid page to Gemini, increase timeout to 50s *)",
+      "Bash(git commit -m 'refactor: two-phase crawl — find overview, then fetch branch sub-pages *)",
+      "Bash(git commit -m 'perf: extract div.text-block__body text instead of sending raw HTML *)"
     ]
   }
 }

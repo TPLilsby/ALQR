@@ -396,6 +396,121 @@ Fjern source-overwrite helt. `"fallback"` og `"crawled"` bevares præcist som de
 
 ---
 
+## Entry 014 — 2026-05-09 — Sprint 10 Fase 2: Vercel Live-debugging
+
+### Hvad blev lavet
+- Vercel deploy bekræftet live på `alqr-rho.vercel.app`
+- `lib/ai-extract.ts`: Gemini SDK fjernet, erstattet med direct REST fetch
+- `lib/ai-extract.ts`: Model opdateret: `gemini-1.5-flash` → `gemini-flash-latest`
+- `app/create/page.tsx` + `app/demo/page.tsx`: QR URL ændret fra hardcoded `alqr.dk` til `window.location.origin`
+- `lib/crawler.ts`: Timeout øget fra 8.000ms til 25.000ms
+- `lib/ai-extract.ts`: HTML-cap reduceret fra 50.000 til 30.000 tegn
+- `lib/crawler.ts`: `afdeling`-pattern uden `\b` word boundary
+- Debug-logs tilføjet i `crawler.ts` (fetching URLs, HTML preview, Gemini kald/svar, timeout/fejl) og `ai-extract.ts` (HTML length, key exists, response status, raw svar, parse-fejl)
+
+### Truffet valg
+
+**Gemini SDK erstattet med direct REST fetch**
+`@google/generative-ai` SDK crashede på Vercel før API-kaldet — ingen external API request viste sig i Vercel logs. `npm install @google/generative-ai@latest` fejlede lokalt pga. Windows SSL-certifikat-problem. Direct fetch til `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent` omgår begge problemer og er simplere.
+
+**`gemini-flash-latest` som model-navn**
+Gennemgik: `gemini-1.5-flash` (404) → `gemini-2.0-flash` (SDK crash) → `gemini-2.5-flash` (SDK for gammel) → `gemini-flash-latest` (officielt navn fra Googles egen cURL quickstart). `gemini-flash-latest` peger altid på nyeste stabile Flash-model.
+
+**QR URL bygges fra `window.location.origin`**
+QR-koden kodede `https://alqr.dk/scan?domain=...` — et domæne der ikke eksisterer. `window.location.origin` producerer korrekt `https://alqr-rho.vercel.app/scan?domain=...`. SSR-guard: `typeof window !== "undefined" ? window.location.origin : ""`.
+
+**Vercel Hobby timeout er 60 sek — ikke 10 sek**
+CLAUDE.md og Entry 001/004 angav fejlagtigt "10 sek hard limit". Vercel Hobby plan har 60 sek. Crawler-timeout sat til 25 sek — giver Gemini 15+ sek til at processere 30K HTML.
+
+**HTML-cap 50K → 30K tegn**
+50K tegn tog for lang tid for Gemini inden for det tidligere 8 sek vindue. 30K indeholder al nødvendig afdelingsinfo fra GSV's oversigtsside. Skæringen sker på ren HTML (efter script/style/svg-strip).
+
+**`\b` fjernet fra `afdeling`-pattern**
+`/\bafdeling\b/i` matchede ikke `gsv-afdelinger` fordi bindestreg-prefixet bryder ikke word-boundary korrekt på denne måde. `/afdeling/i` (uden boundary) matcher alle varianter: gsv-afdelinger, afdelingsoversigt, alle-afdelinger.
+
+### Problemer stødt på
+- **Windows SSL-certifikat**: `git push` og `npm install` fejler lokalt. Workaround: `! git push` i Claude Code-prompt (kører i autentificeret shell). Kendes fra Sprint 1/3.
+- **Gemini returnerer 0 branches**: Crawler finder sandsynligvis ikke `/gsv-afdelinger/`-siden. Debug-logs skal bekræfte hvilke URLs der faktisk fetches og om HTML-preview indeholder adressedata.
+
+### Nuværende status (igangværende)
+Gemini-kaldet sker nu korrekt (bekræftet via Vercel logs: response status 200, raw svar modtages). Crawler returnerer stadig 0 branches → fallback. Næste skridt: tjek `CRAWLER: Fetching URLs` log for om `gsv-afdelinger` er i listen. Hvis ikke, linkes siden ikke fra forsiden og probe-paths skal udvides.
+
+### Næste skridt
+- Aflæs Vercel Runtime Logs for `CRAWLER: Fetching URLs` og `CRAWLER: HTML preview`
+- Hvis gsv-afdelinger ikke er i URL-listen: tilføj site-specifik probe-path eller alternativ crawl-strategi
+- Fjern debug-logs når live data virker
+
+---
+
+## Entry 015 — 2026-05-09 — Sprint 10 Fase 3: Crawler-arkitektur omskrevet
+
+### Hvad blev lavet
+- `lib/crawler.ts`: To-fase crawl-strategi implementeret (se nedenfor)
+- `lib/crawler.ts`: Probe-paths som supplement til link-scanning fra forsiden
+- `lib/crawler.ts`: Per-URL status-logging (`200 (X chars)` vs `null/404`)
+- `lib/crawler.ts`: Cheerio-baseret kontakttekst-ekstraktion fra `div.text-block__body`
+- `lib/crawler.ts`: Fetch op til 30 branch-sider parallelt (fra 6)
+- `lib/crawler.ts`: Crawler-timeout øget til 50.000ms
+- `lib/ai-extract.ts`: `trimHTML()` omskrevet til cheerio — fjerner `<head>`, `<script>`, `<style>`, `<svg>`, `<noscript>` før 80K-kap
+- `lib/ai-extract.ts`: HTML-cap øget til 80.000 tegn (for oversigts-sider)
+
+### Årsag og problemforløb
+
+**Problem 1: Forside har kun 14 statiske links — ingen peger på /gsv-afdelinger/**
+GSV's navigation er JS-renderet. Cheerio ser ikke menuen. Opdaget via `console.log("CRAWLER: First 20 hrefs:", ...)`.
+
+**Løsning: Probe-paths som supplement**
+`PROBE_PATHS = ["gsv-afdelinger", "afdelinger", "kontakt", "locations", "branches"]` prøves direkte uanset hvad forsiden linker til. Første 200-OK er oversigts-siden.
+
+**Problem 2: trimHTML() kappede ved 30K fra starten — alt var `<head>` og meta-tags**
+GSV's afdelingsside er 105K. De første ~15K er `<head>` med scripts og CSS. Faktisk indhold starter efter. 30K-grænsen betød Gemini kun så meta-tags.
+
+**Løsning: cheerio-baseret trimHTML()**
+```ts
+const $ = cheerio.load(html);
+$("head, script, style, svg, noscript").remove();
+return ($.html("body") ?? $.html()).slice(0, 80_000);
+```
+Gemini ser nu rent body-indhold.
+
+**Problem 3: 71K kombineret HTML (gsv-afdelinger + kontakt) → timeout**
+Første succesfulde probe-path (gsv-afdelinger) + kontakt kombineret = 71K. For meget for Gemini inden for 25 sek.
+
+**Løsning: To-fase crawl-arkitektur**
+1. Fetch kandidater sekventielt, stop ved første 200-OK (oversigts-siden)
+2. Parse oversigts-siden med cheerio for links der er undersider af oversigts-URL'en
+3. Fetch op til 30 branch-sider parallelt
+4. Udtræk kun `div.text-block__body` tekst per side (~100 tegn per afdeling)
+5. Kombiner med `---PAGE: [url]---` header per side — ~2.400 tegn totalt
+6. Fallback til trimHTML(oversigtsside) hvis ingen undersider findes
+
+### Truffet valg
+
+**Sekventiel fetch af kandidater (stop ved første 200-OK)**
+Parallel fetch af alle probe-paths spildte tid på 404-svar. Sekventiel fetch stopper ved første hit — typisk `gsv-afdelinger/` på andet forsøg.
+
+**`div.text-block__body` selector hardcoded**
+GSV-specifik HTML-struktur, men med fallback til `trimHTML(2K)` hvis selectoren finder intet. Virker generisk for sider med lignende struktur. Fremtidige domæner kan kræve andre selektorer — det håndteres når de opstår.
+
+**Slice(0, 30) branch-URLs**
+Fra 6 til 30 — GSV har 24 afdelinger. Parallelt fetch af 30 sider tager ~5 sek (5 sek timeout per side). Med 50 sek total timeout er der plads.
+
+**80K HTML-cap for oversigts-sider (fallback-sti)**
+Kun relevant når ingen branch-undersider findes. For normale sider med `text-block__body` sendes kun ~2.400 tegn.
+
+### Resultater
+- `source: "crawled"` bekræftet i API-response
+- Gemini returnerer data fra gsv.dk (1 afdeling bekræftet)
+- To-fase strategi med contact-extraction sendt til test — forventer 20+ afdelinger
+
+### Næste skridt
+- Bekræft antal afdelinger i Vercel logs (`CRAWLER: Gemini returned X branches`)
+- Hvis stadig under 24: tjek om alle branch-URLs fanges korrekt
+- Fjern debug-logs når crawleren returnerer korrekt antal
+- Tilføj geocoding af crawlede afdelinger (koordinater er pt. `lat:0, lng:0`)
+
+---
+
 ## Template for fremtidige entries
 
 ```
