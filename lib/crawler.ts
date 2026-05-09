@@ -13,6 +13,10 @@ const TLD_COUNTRY: Record<string, string> = {
   se: "SE", no: "NO", com: "FR",
 };
 
+function sameHost(a: string, b: string): boolean {
+  return new URL(a).hostname.replace(/^www\./, "") === new URL(b).hostname.replace(/^www\./, "");
+}
+
 function guessCountry(domain: string): string {
   const tld = domain.split(".").pop()?.toLowerCase() ?? "";
   return TLD_COUNTRY[tld] ?? "DK";
@@ -108,12 +112,19 @@ async function doCrawl(domain: string): Promise<CrawlResult> {
     const $overview = cheerio.load(overviewHtml);
     const branchUrls: string[] = [];
 
+    const overviewPath = new URL(overviewUrl!).pathname;
+
     $overview("a[href]").each((_, el) => {
       const href = $overview(el).attr("href") ?? "";
       try {
-        const abs = new URL(href, overviewUrl!).href;
-        if (abs.startsWith(overviewUrl!) && abs !== overviewUrl) {
-          branchUrls.push(abs);
+        const abs = new URL(href, overviewUrl!);
+        const candidatePath = abs.pathname;
+        if (
+          sameHost(abs.href, overviewUrl!) &&
+          candidatePath.startsWith(overviewPath) &&
+          candidatePath !== overviewPath
+        ) {
+          branchUrls.push(abs.href);
         }
       } catch {}
     });
