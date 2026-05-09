@@ -64,7 +64,7 @@ export function trimHTML(html: string): string {
     .replace(/<script[\s\S]*?<\/script>/gi, "")
     .replace(/<style[\s\S]*?<\/style>/gi, "")
     .replace(/<svg[\s\S]*?<\/svg>/gi, "")
-    .slice(0, 50_000);
+    .slice(0, 30_000);
 }
 
 export async function extractBranchesFromHTML(

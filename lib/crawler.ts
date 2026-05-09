@@ -142,7 +142,7 @@ async function doCrawl(domain: string): Promise<CrawlResult> {
 
 export async function crawlDomain(domain: string): Promise<CrawlResult> {
   try {
-    return await withTimeout(doCrawl(domain), 8_000);
+    return await withTimeout(doCrawl(domain), 25_000);
   } catch (error) {
     console.log("CRAWLER: Timeout or error:", error);
     return makeFallbackResult(domain);
