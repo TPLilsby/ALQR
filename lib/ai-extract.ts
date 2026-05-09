@@ -1,3 +1,4 @@
+import * as cheerio from "cheerio";
 import { Branch, DataSource } from "@/types/branch";
 
 const GEMINI_URL =
@@ -60,11 +61,9 @@ function toSlug(s: string): string {
 }
 
 export function trimHTML(html: string): string {
-  return html
-    .replace(/<script[\s\S]*?<\/script>/gi, "")
-    .replace(/<style[\s\S]*?<\/style>/gi, "")
-    .replace(/<svg[\s\S]*?<\/svg>/gi, "")
-    .slice(0, 30_000);
+  const $ = cheerio.load(html);
+  $("head, script, style, svg, noscript").remove();
+  return ($.html("body") ?? $.html()).slice(0, 30_000);
 }
 
 export async function extractBranchesFromHTML(

@@ -5,11 +5,7 @@ import { fallbackBranches } from "@/data/fallback-branches";
 
 const LINK_PATTERN = /(afdeling|location|branch|kontakt|find)/i;
 
-const PROBE_PATHS = [
-  "afdelinger", "gsv-afdelinger", "kontakt", "find-os", "locations",
-  "branches", "filialer", "find-afdeling", "kontakt-os",
-  "agences", "standorte", "sucursales", "sedi",
-];
+const PROBE_PATHS = ["gsv-afdelinger", "afdelinger", "kontakt", "locations", "branches"];
 
 const TLD_COUNTRY: Record<string, string> = {
   dk: "DK", fr: "FR", de: "DE", es: "ES",
