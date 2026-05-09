@@ -77,14 +77,15 @@ export default function CreatePage() {
   }
 
   async function copyLink() {
-    const url = `https://alqr.dk/scan?domain=${domain}`;
+    const url = `${window.location.origin}/scan?domain=${domain}`;
     await navigator.clipboard.writeText(url);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
 
   const currentStep = step === "input" ? 1 : step === "loading" ? 2 : 3;
-  const qrUrl = `https://alqr.dk/scan?domain=${domain}`;
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const qrUrl = `${origin}/scan?domain=${domain}`;
 
   return (
     <main className="flex flex-col min-h-screen max-w-md mx-auto px-4 py-10 gap-8">

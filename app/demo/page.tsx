@@ -82,7 +82,8 @@ function DemoContent() {
   }
 
   const mapConfig = MAP_CONFIG[selectedDomain] ?? MAP_CONFIG["gsv.dk"];
-  const qrUrl = `https://alqr.dk/scan?domain=${selectedDomain}`;
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const qrUrl = `${origin}/scan?domain=${selectedDomain}`;
   const companyLabel = COMPANIES.find((c) => c.domain === selectedDomain)?.label ?? selectedDomain;
 
   return (
