@@ -32,7 +32,8 @@
       "Bash(node -e \"require\\('@eslint/eslintrc'\\)\")",
       "Bash(git add *)",
       "Bash(git commit -m 'fix: update Gemini model to gemini-2.0-flash *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(git commit -m 'fix: build QR URL from window.location.origin instead of hardcoded alqr.dk *)"
     ]
   }
 }
