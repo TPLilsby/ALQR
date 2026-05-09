@@ -34,6 +34,12 @@ function findCandidateUrls(html: string, baseUrl: string): string[] {
   const found: string[] = [];
   const baseDomain = new URL(baseUrl).hostname.replace(/^www\./, "");
 
+  const allHrefs: string[] = [];
+  $("a[href]").each((_, el) => { allHrefs.push($(el).attr("href") ?? ""); });
+  console.log("CRAWLER: Total links on page:", allHrefs.length);
+  console.log("CRAWLER: First 20 hrefs:", allHrefs.slice(0, 20));
+  console.log("CRAWLER: Pattern matches:", allHrefs.filter(h => LINK_PATTERN.test(h)).slice(0, 10));
+
   $("a[href]").each((_, el) => {
     const href = $(el).attr("href") ?? "";
     if (!href || /^(mailto:|tel:|#|javascript:)/.test(href)) return;
