@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(yes)",
+      "Bash(npx create-next-app@latest . --typescript --tailwind --app --no-src-dir --no-git --eslint --no-turbopack)",
+      "Bash(npx create-next-app@latest alqr-setup --typescript --tailwind --app --no-src-dir --no-git --eslint --no-turbopack)",
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(npx next *)",
+      "PowerShell(npm show *)",
+      "Bash(curl -s http://localhost:3001)",
+      "WebFetch(domain:www.gsv.dk)",
+      "WebFetch(domain:www.kiloutou.fr)",
+      "WebSearch",
+      "WebFetch(domain:gsv.dk)",
+      "PowerShell(Set-Location \"C:\\\\Users\\\\Tobias\\\\GitHub\\\\ALQR\"; npx tsx lib/distance.test.ts 2>&1; echo \"EXIT: $LASTEXITCODE\")",
+      "Bash(node -e \"const {GoogleGenerativeAI} = require\\('/c/Users/Tobias/GitHub/ALQR/node_modules/@google/generative-ai'\\); console.log\\(typeof GoogleGenerativeAI\\);\")",
+      "Bash(curl -s -X POST http://localhost:3001/api/crawl -H 'Content-Type: application/json' -d '{\"domain\":\"gsv.dk\"}')",
+      "Bash(python3 -c ' *)",
+      "Bash(curl -s -X POST http://localhost:3001/api/crawl -H 'Content-Type: application/json' -d '{\"domain\":\"ingen-afdelinger.dk\"}')",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(f'source={d[\\\\\"source\\\\\"]}'\\)\")",
+      "Bash(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:3001/api/crawl -H 'Content-Type: application/json' -d '{\"domain\":\"ingenTLD\"}')",
+      "Bash(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:3001/api/crawl -H 'Content-Type: application/json' -d '{}')",
+      "Bash(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:3001/api/crawl -H 'Content-Type: application/json' -d 'ugyldig json')",
+      "Bash(curl -s -X POST http://localhost:3001/api/crawl -H 'Content-Type: application/json' -d '{\"domain\":\"https://www.gsv.dk/afdelinger\"}')",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(f'domain={d[\\\\\"domain\\\\\"]}, branches={len\\(d[\\\\\"branches\\\\\"]\\)}'\\)\")",
+      "Bash(pkill -f \"next dev\")",
+      "Bash(npx tsc *)",
+      "Bash(cmd /c \"for /f \\\\\"tokens=5\\\\\" %a in \\('netstat -aon ^| findstr :3002'\\) do taskkill /PID %a /F\")",
+      "Bash(cmd *)",
+      "Bash(curl *)",
+      "Bash(node -e \"require\\('@eslint/eslintrc'\\)\")"
+    ]
+  }
+}

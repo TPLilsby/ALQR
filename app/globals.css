@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+@theme {
+  --color-green-brand: #267D39;
+  --color-green-brand-dark: #1F6630;
+  --color-background: #ffffff;
+  --color-foreground: #111827;
+}
+
+body {
+  background: #ffffff;
+  color: #111827;
+  font-family: Arial, Helvetica, sans-serif;
+}
