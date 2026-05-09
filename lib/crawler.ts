@@ -100,9 +100,8 @@ async function doCrawl(domain: string): Promise<CrawlResult> {
   );
   const validPages = results.filter((p): p is string => p !== null);
 
-  // Send kun kandidatsidernes HTML til Gemini — forsiden har ikke afdelingsdata
-  // Fallback til forsiden hvis ingen kandidater blev hentet
-  const htmlToSend = validPages.length > 0 ? validPages.join("\n") : homepageHtml;
+  // Send kun den første succesfulde side — den bedst-matchede har alle afdelinger
+  const htmlToSend = validPages.length > 0 ? validPages[0] : homepageHtml;
   const trimmed = trimHTML(htmlToSend);
 
   const $ = cheerio.load(homepageHtml);
@@ -135,7 +134,7 @@ async function doCrawl(domain: string): Promise<CrawlResult> {
 
 export async function crawlDomain(domain: string): Promise<CrawlResult> {
   try {
-    return await withTimeout(doCrawl(domain), 25_000);
+    return await withTimeout(doCrawl(domain), 50_000);
   } catch (error) {
     console.log("CRAWLER: Timeout or error:", error);
     return makeFallbackResult(domain);
