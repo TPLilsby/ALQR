@@ -118,17 +118,31 @@ async function doCrawl(domain: string): Promise<CrawlResult> {
       } catch {}
     });
 
-    const uniqueBranchUrls = [...new Set(branchUrls)].slice(0, 6);
+    const uniqueBranchUrls = [...new Set(branchUrls)].slice(0, 30);
     console.log("CRAWLER: Found branch URLs:", uniqueBranchUrls);
 
     if (uniqueBranchUrls.length > 0) {
-      // Trin 3: fetch branch-sider parallelt
-      const branchPages = await Promise.all(uniqueBranchUrls.map((url) => fetchPage(url)));
-      const validBranchPages = branchPages.filter((p): p is string => p !== null);
-      console.log("CRAWLER: Fetched", validBranchPages.length, "branch pages");
+      // Trin 3: fetch alle branch-sider parallelt
+      const branchResults = await Promise.all(
+        uniqueBranchUrls.map(async (url) => ({ url, html: await fetchPage(url) }))
+      );
+      const validBranches = branchResults.filter((r): r is { url: string; html: string } => r.html !== null);
+      console.log("CRAWLER: Fetched", validBranches.length, "branch pages");
 
-      // Trin 4: strip head/scripts fra hver, kombiner
-      htmlToSend = validBranchPages.map((html) => trimHTML(html)).join("\n---NEXT PAGE---\n");
+      // Trin 4: udtræk kun kontaktinfo fra div.text-block__body per side
+      const blocks = validBranches.map(({ url, html }) => {
+        const $p = cheerio.load(html);
+        const texts: string[] = [];
+        $p("div.text-block__body").each((_, el) => {
+          const text = $p(el).text().trim();
+          if (text) texts.push(text);
+        });
+        const content = texts.length > 0 ? texts.join("\n") : trimHTML(html).slice(0, 2000);
+        return `---PAGE: ${url}---\n${content}`;
+      });
+
+      htmlToSend = blocks.join("\n\n");
+      console.log("CRAWLER: Compact text length:", htmlToSend.length);
     } else {
       // Ingen undersider — send oversigts-siden direkte
       console.log("CRAWLER: No branch sub-pages found, using overview page directly");
