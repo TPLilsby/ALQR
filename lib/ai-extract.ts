@@ -1,8 +1,7 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { Branch, DataSource } from "@/types/branch";
 
-const genai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-const model = genai.getGenerativeModel({ model: "gemini-2.5-flash" });
+const GEMINI_URL =
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
 
 const SYSTEM_PROMPT = `Du er en præcis data-ekstraktor. Din opgave er at udtrække information om ALLE fysiske afdelinger fra virksomhedens hjemmeside-HTML.
 
@@ -76,8 +75,23 @@ export async function extractBranchesFromHTML(
 ): Promise<Omit<Branch, "lat" | "lng">[]> {
   const prompt = `${SYSTEM_PROMPT}\n\nFirma: ${company}\nLand: ${country}\nDomæne: ${domain}\n\nHTML:\n${html}`;
   try {
-    const result = await model.generateContent(prompt);
-    const raw = result.response.text();
+    const response = await fetch(
+      `${GEMINI_URL}?key=${process.env.GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+        }),
+      }
+    );
+    if (!response.ok) {
+      const err = await response.text();
+      console.error("Gemini API error:", response.status, err);
+      return [];
+    }
+    const data = await response.json();
+    const raw: string = data.candidates[0].content.parts[0].text;
     const json = extractJSON(raw);
     const parsed = JSON.parse(json);
     if (!Array.isArray(parsed)) return [];
