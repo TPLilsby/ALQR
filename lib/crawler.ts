@@ -3,26 +3,7 @@ import { CrawlResult, Branch, DataSource } from "@/types/branch";
 import { extractBranchesFromHTML, trimHTML } from "./ai-extract";
 import { fallbackBranches } from "@/data/fallback-branches";
 
-// Plural patterns = oversigts-sider (højere prioritet end singular)
-const OVERVIEW_PATTERNS = [
-  /afdelinger/i,
-  /\blocations\b/i,
-  /\bbranches\b/i,
-  /find-us/i,
-  /\bsektioner\b/i,
-];
-
-const BRANCH_PATTERNS = [
-  /afdeling/i,
-  /\bkontakt\b/i,
-  /find-os/i,
-  /lokation/i,
-  /\bbranch\b/i,
-  /store-locator/i,
-];
-
-// Direkte probe-paths — forsøges selv hvis ikke linket fra forsiden
-const PROBE_PATHS = ["afdelinger", "kontakt", "find-os", "locations"];
+const LINK_PATTERN = /(afdeling|location|branch|kontakt|find)/i;
 
 const TLD_COUNTRY: Record<string, string> = {
   dk: "DK", fr: "FR", de: "DE", es: "ES",
@@ -50,31 +31,24 @@ async function fetchPage(url: string): Promise<string | null> {
 
 function findCandidateUrls(html: string, baseUrl: string): string[] {
   const $ = cheerio.load(html);
-  const overview: string[] = [];
-  const secondary: string[] = [];
+  const found: string[] = [];
+  const baseDomain = new URL(baseUrl).hostname.replace(/^www\./, "");
 
   $("a[href]").each((_, el) => {
     const href = $(el).attr("href") ?? "";
     if (!href || /^(mailto:|tel:|#|javascript:)/.test(href)) return;
+    if (!LINK_PATTERN.test(href)) return;
     try {
       const url = new URL(href, baseUrl).href;
-      if (!url.startsWith(baseUrl)) return;
-      if (OVERVIEW_PATTERNS.some((p) => p.test(href))) {
-        overview.push(url);
-      } else if (BRANCH_PATTERNS.some((p) => p.test(href))) {
-        secondary.push(url);
-      }
+      const urlDomain = new URL(url).hostname.replace(/^www\./, "");
+      if (urlDomain !== baseDomain) return;
+      found.push(url);
     } catch {
       // ugyldig URL
     }
   });
 
-  // Probe-paths tilføjes direkte (filtreres ved fetch-fejl)
-  const probed = PROBE_PATHS.map((p) => `${baseUrl}/${p}/`);
-
-  // Oversigts-sider først, derefter sekundære, derefter probe
-  const candidates = [...new Set([...overview, ...secondary, ...probed])];
-  return candidates.slice(0, 5);
+  return [...new Set(found)].slice(0, 5);
 }
 
 function makeFallbackResult(domain: string): CrawlResult {
@@ -106,13 +80,14 @@ async function doCrawl(domain: string): Promise<CrawlResult> {
   const candidateUrls = findCandidateUrls(homepageHtml, baseUrl);
   console.log("CRAWLER: Fetching URLs:", candidateUrls);
 
-  // Hent alle kandidatsider parallelt — inkl. oversigts-sider som gsv.dk/gsv-afdelinger/
+  // Hent kandidatsider parallelt
   const pages = await Promise.all(candidateUrls.map((url) => fetchPage(url)));
   const validPages = pages.filter((p): p is string => p !== null);
 
-  // Kombiner forside + alle fundne sider — Gemini ser det hele
-  const combinedHtml = [homepageHtml, ...validPages].join("\n");
-  const trimmed = trimHTML(combinedHtml);
+  // Send kun kandidatsidernes HTML til Gemini — forsiden har ikke afdelingsdata
+  // Fallback til forsiden hvis ingen kandidater blev hentet
+  const htmlToSend = validPages.length > 0 ? validPages.join("\n") : homepageHtml;
+  const trimmed = trimHTML(htmlToSend);
 
   const $ = cheerio.load(homepageHtml);
   const company =
