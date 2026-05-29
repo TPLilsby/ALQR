@@ -47,7 +47,9 @@
       "Bash(git commit -m 'fix: send only first valid page to Gemini, increase timeout to 50s *)",
       "Bash(git commit -m 'refactor: two-phase crawl — find overview, then fetch branch sub-pages *)",
       "Bash(git commit -m 'perf: extract div.text-block__body text instead of sending raw HTML *)",
-      "Bash(git commit -m 'fix: use sameHost\\(\\) to normalize http/www when matching branch URLs *)"
+      "Bash(git commit -m 'fix: use sameHost\\(\\) to normalize http/www when matching branch URLs *)",
+      "PowerShell(Get-Command *)",
+      "PowerShell(npm *)"
     ]
   }
 }

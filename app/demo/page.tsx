@@ -39,25 +39,30 @@ function DemoContent() {
   const [selectedDomain, setSelectedDomain] = useState(validInitial);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [crawlSource, setCrawlSource] = useState<DataSource | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [clickedLat, setClickedLat] = useState<number | undefined>();
   const [clickedLng, setClickedLng] = useState<number | undefined>();
   const [nearest, setNearest] = useState<{ branch: Branch; distanceKm: number } | null>(null);
 
   const fetchBranches = useCallback(async (domain: string) => {
     setIsLoading(true);
+    console.log("DEMO: fetching branches for domain:", domain);
     try {
+      const body = JSON.stringify({ domain });
+      console.log("DEMO: POST /api/crawl body:", body);
       const res = await fetch("/api/crawl", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ domain }),
+        body,
       });
-      if (!res.ok) throw new Error();
+      console.log("DEMO: response status:", res.status, res.ok);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data: CrawlResult = await res.json();
       console.log("DEMO: branches loaded:", data.branches.length, data.branches.slice(0, 2));
       setBranches(data.branches);
       setCrawlSource(data.source);
-    } catch {
+    } catch (error) {
+      console.error("DEMO: fetch failed:", error);
       setBranches([]);
     } finally {
       setIsLoading(false);
@@ -75,6 +80,13 @@ function DemoContent() {
     setNearest(null);
   }
 
+  useEffect(() => {
+    if (clickedLat !== undefined && clickedLng !== undefined && branches.length > 0) {
+      const result = findNearestBranch(clickedLat, clickedLng, branches);
+      setNearest(result);
+    }
+  }, [branches, clickedLat, clickedLng]);
+
   function handleLocationSelect(lat: number, lng: number) {
     setClickedLat(lat);
     setClickedLng(lng);
@@ -85,9 +97,11 @@ function DemoContent() {
     setNearest(result);
   }
 
+  const [origin, setOrigin] = useState("");
+  useEffect(() => { setOrigin(window.location.origin); }, []);
+
   const mapConfig = MAP_CONFIG[selectedDomain] ?? MAP_CONFIG["gsv.dk"];
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const qrUrl = `${origin}/scan?domain=${selectedDomain}`;
+  const qrUrl = origin ? `${origin}/scan?domain=${selectedDomain}` : `/scan?domain=${selectedDomain}`;
   const companyLabel = COMPANIES.find((c) => c.domain === selectedDomain)?.label ?? selectedDomain;
 
   return (
@@ -123,18 +137,31 @@ function DemoContent() {
 
         {/* Kort */}
         <div className="flex flex-col gap-2">
-          <Map
-            mode="clickable"
-            height="300px"
-            initialCenter={mapConfig.center}
-            initialZoom={mapConfig.zoom}
-            flyToCenter={mapConfig.center}
-            flyToZoom={mapConfig.zoom}
-            onLocationSelect={handleLocationSelect}
-            selectedLat={clickedLat}
-            selectedLng={clickedLng}
-          />
-          {!clickedLat && (
+          <div className="relative">
+            <Map
+              mode="clickable"
+              height="300px"
+              initialCenter={mapConfig.center}
+              initialZoom={mapConfig.zoom}
+              flyToCenter={mapConfig.center}
+              flyToZoom={mapConfig.zoom}
+              onLocationSelect={handleLocationSelect}
+              selectedLat={clickedLat}
+              selectedLng={clickedLng}
+            />
+            {isLoading && (
+              <div className="absolute inset-0 rounded-xl bg-white flex flex-col items-center justify-center gap-3 pointer-events-auto z-[1000]">
+                <div
+                  className="w-8 h-8 rounded-full border-4 border-t-transparent animate-spin"
+                  style={{ borderColor: "#267D39", borderTopColor: "transparent" }}
+                />
+                <p className="text-sm font-medium text-gray-600">
+                  Henter afdelinger fra {selectedDomain}…
+                </p>
+              </div>
+            )}
+          </div>
+          {!clickedLat && !isLoading && (
             <p className="text-xs text-gray-400 text-center">
               Klik på kortet for at vælge din position
             </p>
@@ -142,15 +169,6 @@ function DemoContent() {
         </div>
 
         {/* Resultat */}
-        {isLoading && (
-          <div className="flex justify-center py-4">
-            <div
-              className="w-8 h-8 rounded-full border-4 border-t-transparent animate-spin"
-              style={{ borderColor: "#267D39", borderTopColor: "transparent" }}
-            />
-          </div>
-        )}
-
         {!isLoading && nearest && (
           <div className="flex flex-col gap-3">
             <p className="text-sm font-medium text-gray-700">Nærmeste afdeling:</p>
