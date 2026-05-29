@@ -54,6 +54,7 @@ function DemoContent() {
       });
       if (!res.ok) throw new Error();
       const data: CrawlResult = await res.json();
+      console.log("DEMO: branches loaded:", data.branches.length, data.branches.slice(0, 2));
       setBranches(data.branches);
       setCrawlSource(data.source);
     } catch {
@@ -77,7 +78,10 @@ function DemoContent() {
   function handleLocationSelect(lat: number, lng: number) {
     setClickedLat(lat);
     setClickedLng(lng);
+    console.log("DEMO: finding nearest to", lat, lng, "in", branches.length, "branches");
+    console.log("DEMO: branch lat/lng sample:", branches.slice(0, 3).map(b => ({ name: b.name, lat: b.lat, lng: b.lng })));
     const result = findNearestBranch(lat, lng, branches);
+    console.log("DEMO: nearest result:", result);
     setNearest(result);
   }
 
